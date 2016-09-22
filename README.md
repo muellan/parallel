@@ -8,6 +8,8 @@ to change over time, documentation is very poor so far and tests are rudimentary
 
 All components are header-only.
 
+See the "*_demo.cpp" files for usage examples.
+
 ## facilities
 
 #### task_thread
@@ -27,8 +29,6 @@ All components are header-only.
 
 #### timer
  - simple std::chrono based timer
-
-See the "*_demo.cpp" files for usage examples.
 
 ## Prerequisites
   - requires (mostly) C++14 conforming compiler
