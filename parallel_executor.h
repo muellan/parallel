@@ -21,9 +21,8 @@ namespace am {
  *
  * @brief    runs a sequence of tasks in parallel
  *
- *           A task in this context is anything that is callable without any
- *           arguments and that has either a void return type or one that can
- *           be safely discarded.
+ *           A task in this context is anything that is callable and that
+ *           either returns void or the return value can be discarded.
  *
  * @details  Internally a number of threads is always kept alive and fired up
  *           as needed.

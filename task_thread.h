@@ -23,7 +23,7 @@ namespace am {
 /*****************************************************************************
  *
  * @brief  thread that executes a single task and waits after completion
- *         until execution is demanded again
+ *         until it is needed again
  *
  *****************************************************************************/
 template<class Task>
