@@ -3,7 +3,7 @@ COMPILER  = g++
 DIALECT   = -std=c++14 
 WARNINGS  = -Wall -Wextra -Wpedantic
 OPTIMIZE  = -march=native -O3
-LDFLAGS   = -s
+LDFLAGS   = -pthread -s
 
 BUILD_DIR = build
 OBJS      = demos.o parallel_executor_demo.o parallel_task_queue_demo.o

@@ -3,14 +3,15 @@ AM parallel
 
 Collection of parallel programming primitives for C++
 
-**Note**: All classes and functions are work in progress. Interfaces are still likely 
-to change over time, documentation is very poor so far and tests are rudimentary at best. 
+**Note**: All classes and functions are work in progress.
+Interfaces are still likely to change over time, documentation is very poor so far and tests are rudimentary at best. 
 
 All components are header-only.
 
 See the "*_demo.cpp" files for usage examples.
 
-## facilities
+
+## Classes
 
 #### task_thread
  - pausable thread
@@ -30,6 +31,7 @@ See the "*_demo.cpp" files for usage examples.
 #### timer
  - simple std::chrono based timer
 
-## Prerequisites
+
+## Requirements
   - requires (mostly) C++14 conforming compiler
   - tested with g++ 5.3
