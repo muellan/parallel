@@ -60,7 +60,7 @@ public:
     parallel_task_queue(unsigned int concurrency =
         std::thread::hardware_concurrency())
     :
-        mutables_{},
+        waitMtx_{}, enqueueMtx_{},
         active_{true}, hasWaiting_{false},
         running_{0},
         waiting_{},
@@ -94,7 +94,7 @@ public:
     void
     enqueue(const task_type& t)
     {
-        std::lock_guard<std::mutex> lock(mutables_);
+        std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         waiting_.push_back(t);
         hasWaiting_.store(true);
     }
@@ -102,7 +102,7 @@ public:
     void
     enqueue(task_type&& t)
     {
-        std::lock_guard<std::mutex> lock(mutables_);
+        std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         waiting_.push_back(std::move(t));
         hasWaiting_.store(true);
     }
@@ -111,7 +111,7 @@ public:
     void
     enqueue(InputIterator first, InputIterator last)
     {
-        std::lock_guard<std::mutex> lock(mutables_);
+        std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         waiting_.insert(begin(waiting_), first, last);
         hasWaiting_.store(true);
     }
@@ -119,7 +119,7 @@ public:
     void
     enqueue(std::initializer_list<task_type> il)
     {
-        std::lock_guard<std::mutex> lock(mutables_);
+        std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         waiting_.insert(waiting_.end(), il);
         hasWaiting_.store(true);
     }
@@ -128,7 +128,7 @@ public:
     void
     enqueue_emplace(Args&&... args)
     {
-        std::lock_guard<std::mutex> lock(mutables_);
+        std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         waiting_.emplace_back(std::forward<Args>(args)...);
         hasWaiting_.store(true);
     }
@@ -140,7 +140,7 @@ public:
     bool
     try_remove(const task_type& t)
     {
-        std::lock_guard<std::mutex> lock(mutables_);
+        std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         auto it = std::find(waiting_.begin(), waiting_.end(), t);
         if(it != waiting_.end()) {
             waiting_.erase(it);
@@ -154,7 +154,7 @@ public:
     //---------------------------------------------------------------
     void
     clear() {
-        std::lock_guard<std::mutex> lock(mutables_);
+        std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         waiting_.clear();
         hasWaiting_.store(false);
     }
@@ -177,7 +177,7 @@ public:
     /// @return number of waiting tasks
     std::size_t
     waiting() const noexcept {
-        std::lock_guard<std::mutex> lock(mutables_);
+        std::lock_guard<std::recursive_mutex> lock{enqueueMtx_};
         return waiting_.size();
     }
     std::size_t
@@ -202,7 +202,7 @@ public:
     //-----------------------------------------------------
     bool
     complete() const noexcept {
-        std::lock_guard<std::mutex> lock(mutables_);
+        std::lock_guard<std::recursive_mutex> lock{enqueueMtx_};
         return empty() && (running() < 1);
     }
 
@@ -213,7 +213,7 @@ public:
      */
     void wait()
     {
-        std::unique_lock<std::mutex> lock{mutables_};
+        std::unique_lock<std::mutex> lock{waitMtx_};
         while(!empty() || running()) isDone_.wait(lock);
     }
 
@@ -225,7 +225,7 @@ private:
     {
         for(auto& worker : workers_) {
             if(worker.available()) {
-                std::lock_guard<std::mutex> lock{mutables_};
+                std::lock_guard<std::recursive_mutex> lock{enqueueMtx_};
                 if(waiting_.empty()) {
                     hasWaiting_.store(false);
                     return;
@@ -254,7 +254,7 @@ private:
                  try_assign_tasks();
              }
              else if(running() < 1) {
-                 std::lock_guard<std::mutex> lock{mutables_};
+                 std::lock_guard<std::recursive_mutex> lock{enqueueMtx_};
                  if(empty() && (running() < 1)) {
                      isDone_.notify_all();
                  }
@@ -264,7 +264,8 @@ private:
 
 
     //---------------------------------------------------------------
-    mutable std::mutex mutables_;
+    mutable std::mutex waitMtx_;
+    mutable std::recursive_mutex enqueueMtx_;
     std::atomic_bool active_;
     std::atomic_bool hasWaiting_;
     std::atomic_int running_;
