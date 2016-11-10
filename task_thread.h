@@ -1,13 +1,3 @@
-/*****************************************************************************
- *
- * AM numeric facilities
- *
- * released under MIT license
- *
- * 2008-2015 André Müller
- *
- *****************************************************************************/
-
 #ifndef AMLIB_PARALLEL_TASK_THREAD_H_
 #define AMLIB_PARALLEL_TASK_THREAD_H_
 
@@ -23,7 +13,7 @@ namespace am {
 /*****************************************************************************
  *
  * @brief  thread that executes a single task and waits after completion
- *         until it is needed again
+ *         until execution is demanded again
  *
  *****************************************************************************/
 template<class Task>
@@ -66,7 +56,7 @@ public:
         wakeup_.notify_all();
         isIdle_.notify_all();
 
-        wait_until_available();
+        wait();
 
         thread_.join();
     }
@@ -94,7 +84,7 @@ public:
     //---------------------------------------------------------------
     task_thread& operator = (const task_thread& source)
     {
-        wait_until_available();
+        wait();
 
         std::lock_guard<std::mutex> lock(mutables_);
         task_ = source.task_;
@@ -106,7 +96,7 @@ public:
     task_thread& operator = (task_thread&& source)
         noexcept(noexcept(std::declval<task_type>() = source.task_))
     {
-        wait_until_available();
+        wait();
 
         std::lock_guard<std::mutex> lock(mutables_);
         task_ = std::move(source.task_);
@@ -125,7 +115,7 @@ public:
     /**
      * @brief block execution of calling thread until task is finished
      */
-    void wait_until_available()
+    void wait()
     {
         std::unique_lock<std::mutex> lock(mutables_);
 
@@ -137,16 +127,25 @@ public:
 
 
     //---------------------------------------------------------------
+    /**
+     * @brief non-thread-safe access to current task object
+     */
     const task_type&
     unsafe_task() const & noexcept {
         return task_;
     }
+    /**
+     * @brief non-thread-safe access to current task object
+     */
     task_type&
     unsafe_task() & noexcept {
         return task_;
     }
+    /**
+     * @brief extract current task object
+     */
     task_type&&
-    unsafe_task() && noexcept {
+    extract_task() && noexcept {
         return std::move(task_);
     }
 

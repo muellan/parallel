@@ -23,54 +23,53 @@ namespace demo {
 
 
 //-------------------------------------------------------------------
-void use_parallel_task_queue()
-{
-    using namespace std::chrono_literals;
+double parallel_sum(const std::vector<double>& v) {
+    constexpr int n = 64;
 
-    auto concurrency = std::thread::hardware_concurrency();
-    am::parallel_task_queue<std::function<void()>> q{concurrency};
-    std::cout << "concurrency: " << concurrency << std::endl;
+    am::parallel_function_queue q;
 
-    constexpr int n = 100;
-    std::array<int,n> check;
-    for(auto& x : check) x = 0;
-    std::array<double,n> vals;
-    for(auto& x : vals) x = 0.0;
-
-    am::timer time;
-    time.start();
+    auto psums = std::vector<double>(n+1, 0.0);
+    const auto chunk = v.size() / n;
     for(int i = 0; i < n; ++i) {
-        q.enqueue([&check,&vals,i]() {
-            check[i] = i;
-
-            double v = 0.0;
-            auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-            auto urng = std::mt19937_64(seed);
-            auto distr = std::uniform_real_distribution<double>{-1,1};
-            for(int j = 0; j < 10000000; ++j) {
-                v += distr(urng);
-            }
-            vals[i] = v;
-//            auto distr = std::uniform_int_distribution<int>{1,100};
-//            std::this_thread::sleep_for(std::chrono::milliseconds(100 + distr(urng)));
+        q.enqueue([&,i]{
+            psums[i] = std::accumulate(begin(v) + (i*chunk),
+                                       begin(v) + ((i+1)*chunk), 0.0);
+        });
+    }
+    if(v.size() % n > 0) {
+        q.enqueue([&]{
+            psums.back() = std::accumulate(begin(v) + (chunk*n), end(v), 0.0);
         });
     }
 
     q.wait();
+    return std::accumulate(begin(psums), end(psums), 0.0);
+}
+
+
+
+//-------------------------------------------------------------------
+void use_parallel_task_queue()
+{
+    constexpr size_t n = 1 << 26;
+    std::cout << "creating " << n << " values... " << std::flush;
+
+    am::timer time;
+    time.start();
+
+    auto nums = std::vector<double>(n);
+    std::iota(begin(nums), end(nums), 0);
+
     time.stop();
+    std::cout << time.milliseconds() << " ms" << std::endl;
 
-    for(int i = 0; i < n; ++i) {
-        if(check[i] != i) {
-            std::cout << "ERROR\n";
-            for(auto x : check) std::cout << x << '\n';
-            return;
-        }
-    }
+    time.restart();
+    // auto sum = std::accumulate(nums.begin(), nums.end(), 0.0);
+    auto sum = parallel_sum(nums);
 
-    std::cout << "DONE: " << time.milliseconds() << " ms" << std::endl;
-
-    double sum = std::accumulate(begin(vals), end(vals), 0.0);
-    std::cout << "SUM:  " << sum << std::endl;
+    time.stop();
+    std::cout << "summing:  " << time.milliseconds() << " ms\n"
+              << "result:   " << sum << std::endl;
 }
 
 

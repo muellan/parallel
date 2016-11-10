@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <functional>
 
 #include "task_thread.h"
 
@@ -274,6 +275,12 @@ private:
     std::condition_variable isDone_;
     std::thread scheduler_;
 };
+
+
+
+//-------------------------------------------------------------------
+/// @brief convenience alias
+using parallel_function_queue = parallel_task_queue<std::function<void()>>;
 
 
 } // namespace am
