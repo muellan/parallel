@@ -1,35 +1,29 @@
 AM parallel
 ==========
 
-Collection of parallel programming primitives for C++
-
-**Note**: All classes and functions are work in progress.
-Interfaces are still likely to change over time, documentation is very poor so far and tests are rudimentary at best. 
+parallel programming primitives for C++
 
 All components are header-only.
 
-See the "*_demo.cpp" files for usage examples.
+The repo also includes some examples.
 
 
 ## Classes
 
-#### task_thread
+#### task\_thread
  - pausable thread
- - basis for parallel_task_queue
+ - basis for parallel\_task\_queue
 
-#### parallel_executor
+#### parallel\_executor
  - runs a batch of tasks in parallel
  - works on task iterators, doesn't own tasks
  - forwards call args to all tasks
  - blocks calling thread until all tasks are finished
 
-#### parallel_task_queue
+#### parallel\_task\_queue
  - runs tasks in parallel
  - enqueue & run can interleave
  - owns tasks
-
-#### timer
- - simple std::chrono based timer
 
 
 ## Requirements

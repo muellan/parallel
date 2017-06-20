@@ -4,22 +4,17 @@
  *
  * released under MIT license
  *
- * 2008-2015 André Müller
+ * 2015-2017 André Müller
  *
  *****************************************************************************/
-
-#include "parallel_task_queue_demo.h"
-
-#include "parallel_task_queue.h"
-#include "timer.h"
 
 #include <iostream>
 #include <thread>
 #include <chrono>
 #include <random>
 
-
-namespace demo {
+#include "../include/parallel_task_queue.h"
+#include "timer.h"
 
 
 //-------------------------------------------------------------------
@@ -49,7 +44,7 @@ double parallel_sum(const std::vector<double>& v) {
 
 
 //-------------------------------------------------------------------
-void use_parallel_task_queue()
+int main()
 {
     constexpr size_t n = 1 << 26;
     std::cout << "creating " << n << " values... " << std::flush;
@@ -64,14 +59,21 @@ void use_parallel_task_queue()
     std::cout << time.milliseconds() << " ms" << std::endl;
 
     time.restart();
-    // auto sum = std::accumulate(nums.begin(), nums.end(), 0.0);
-    auto sum = parallel_sum(nums);
+    auto sersum = std::accumulate(nums.begin(), nums.end(), 0.0);
+    time.stop();
+    auto sertime = time.milliseconds();
+
+    time.restart();
+    auto parsum = parallel_sum(nums);
+    time.stop();
+    auto partime = time.milliseconds();
 
     time.stop();
-    std::cout << "summing:  " << time.milliseconds() << " ms\n"
-              << "result:   " << sum << std::endl;
+    std::cout << "serial result:   " << sersum << '\n'
+              << "parallel result: " << parsum  << '\n'
+              << "serial time:     " << sertime << " ms\n"
+              << "parallel time:   " << partime << " ms\n"
+              << "speedup:         " << (sertime/double(partime))
+              << std::endl;
 }
 
-
-
-} // namespace demo
