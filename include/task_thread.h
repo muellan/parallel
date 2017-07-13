@@ -1,5 +1,15 @@
-#ifndef AMLIB_PARALLEL_TASK_THREAD_H_
-#define AMLIB_PARALLEL_TASK_THREAD_H_
+/*****************************************************************************
+ *
+ * AM utilities
+ *
+ * released under MIT license
+ *
+ * 2008-2018 André Müller
+ *
+ *****************************************************************************/
+
+#ifndef AM_PARALLEL_TASK_THREAD_H_
+#define AM_PARALLEL_TASK_THREAD_H_
 
 #include <mutex>
 #include <condition_variable>

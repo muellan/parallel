@@ -1,5 +1,15 @@
-#ifndef AMLIB_TIMER_H_
-#define AMLIB_TIMER_H_
+/*****************************************************************************
+ *
+ * AM utilities
+ *
+ * released under MIT license
+ *
+ * 2008-2018 André Müller
+ *
+ *****************************************************************************/
+
+#ifndef AM_TIMER_H_
+#define AM_TIMER_H_
 
 #include <sstream>
 #include <ctime>
@@ -68,27 +78,27 @@ public:
 
 
     //-----------------------------------------------------
-    int64_t
+    auto
     microseconds() const noexcept {
         return elapsed<std::chrono::microseconds>().count();
     }
 
-    int64_t
+    auto
     milliseconds() const noexcept {
         return elapsed<std::chrono::milliseconds>().count();
     }
 
-    int64_t
+    auto
     full_seconds() const noexcept {
         return elapsed<std::chrono::seconds>().count();
     }
 
-    int
+    auto
     full_minutes() const noexcept {
         return elapsed<std::chrono::minutes>().count();
     }
 
-    int
+    auto
     full_hours() const noexcept {
         return elapsed<std::chrono::hours>().count();
     }
@@ -97,17 +107,17 @@ public:
     //-----------------------------------------------------
     double
     seconds() const noexcept {
-        return (milliseconds() / 1000.0);
+        return (double(milliseconds()) / 1000.0);
     }
 
     double
     minutes() const noexcept {
-        return (milliseconds() / 60000.0);
+        return (double(milliseconds()) / 60000.0);
     }
 
     double
     hours() const noexcept {
-        return (milliseconds() / 3600000.0);
+        return (double(milliseconds()) / 3600000.0);
     }
 
 
@@ -119,9 +129,9 @@ public:
         int h = static_cast<int>(full_hours());
         int m = static_cast<int>(full_minutes());
         int s = static_cast<int>(full_seconds());
-        if(h < 10) ss << "0"; ss << h << ":";
-        if(m < 10) ss << "0"; ss << m << ":";
-        if(s < 10) ss << "0"; ss << s;
+        if(h < 10) { ss << "0"; } ss << h << ":";
+        if(m < 10) { ss << "0"; } ss << m << ":";
+        if(s < 10) { ss << "0"; } ss << s;
         return ss.str();
     }
 

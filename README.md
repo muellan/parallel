@@ -1,9 +1,7 @@
 AM parallel
 ==========
 
-parallel programming primitives for C++
-
-All components are header-only.
+Header-only parallel programming primitives for C++14.
 
 The repo also includes some examples.
 
@@ -28,4 +26,4 @@ The repo also includes some examples.
 
 ## Requirements
   - requires (mostly) C++14 conforming compiler
-  - tested with g++ 5.3
+  - tested with g++ {5.3, 7.2}

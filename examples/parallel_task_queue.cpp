@@ -4,7 +4,7 @@
  *
  * released under MIT license
  *
- * 2015-2017 André Müller
+ * 2015-2018 André Müller
  *
  *****************************************************************************/
 
@@ -21,7 +21,7 @@
 double parallel_sum(const std::vector<double>& v) {
     constexpr int n = 64;
 
-    am::parallel_function_queue q;
+    am::parallel_queue q;
 
     auto psums = std::vector<double>(n+1, 0.0);
     const auto chunk = v.size() / n;

@@ -4,6 +4,7 @@ INCLUDE  = ../include
 FILTER   = *
 SOURCES  = $(wildcard $(FILTER).cpp)
 EXECS    = $(notdir $(SOURCES:.cpp=))
+CXX      = g++
 FLAGS    = -I $(INCLUDE) -std=c++14 -O3 -Wall -pthread
 
 INCLUDES = \
@@ -17,7 +18,7 @@ INCLUDES = \
 all: $(EXECS)
 
 % : %.cpp $(INCLUDES)
-	g++ $(FLAGS) -o $@ $<
+	$(CXX) $(FLAGS) -o $@ $<
 
 clean:
 	find -type f -not -name "*.cpp" -not -name "*.h" -not -name "Makefile" -not -name "runall" | xargs rm

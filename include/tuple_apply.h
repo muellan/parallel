@@ -4,12 +4,12 @@
  *
  * released under MIT license
  *
- * 2008-2016 André Müller
+ * 2008-2018 André Müller
  *
  *****************************************************************************/
 
-#ifndef AMLIB_GENERIC_TUPLE_APPLY_H_
-#define AMLIB_GENERIC_TUPLE_APPLY_H_
+#ifndef AM_GENERIC_TUPLE_APPLY_H_
+#define AM_GENERIC_TUPLE_APPLY_H_
 
 #include <type_traits>
 #include <utility>

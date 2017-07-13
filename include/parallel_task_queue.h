@@ -1,3 +1,13 @@
+/*****************************************************************************
+ *
+ * AM utilities
+ *
+ * released under MIT license
+ *
+ * 2008-2018 André Müller
+ *
+ *****************************************************************************/
+
 #ifndef AMLIB_PARALLEL_TASK_QUEUE_H_
 #define AMLIB_PARALLEL_TASK_QUEUE_H_
 
@@ -45,6 +55,7 @@ private:
         void operator () () {
             task_();
             --queue_->running_;
+            queue_->notify_task_complete();
         }
 
     private:
@@ -67,6 +78,8 @@ public:
         waiting_{},
         workers_(concurrency),
         isDone_{},
+        busyMtx_{}, 
+        isBusy_{},
         scheduler_{ [&] { schedule(); }}
     {}
 
@@ -215,11 +228,16 @@ public:
     void wait()
     {
         std::unique_lock<std::mutex> lock{waitMtx_};
-        while(!empty() || running()) isDone_.wait(lock);
+        isDone_.wait(lock, [this] { return empty() && !running(); });
     }
 
 
 private:
+    //-----------------------------------------------------
+    void notify_task_complete() {
+        isBusy_.notify_one();
+    }
+
 
     //---------------------------------------------------------------
     void try_assign_tasks()
@@ -251,9 +269,13 @@ private:
     void schedule()
     {
          while(active_.load()) {
-             if(!empty() && !busy()) {
-                 try_assign_tasks();
+             if(busy()) {
+                 std::unique_lock<std::mutex> lock{busyMtx_};
+                 isBusy_.wait(lock, [this]{ return !busy(); });
              }
+             else if(!empty()) {
+                 try_assign_tasks();
+             }            
              else if(running() < 1) {
                  std::lock_guard<std::recursive_mutex> lock{enqueueMtx_};
                  if(empty() && (running() < 1)) {
@@ -273,6 +295,8 @@ private:
     std::deque<task_type> waiting_;
     std::vector<task_thread<task_executor>> workers_;
     std::condition_variable isDone_;
+    std::mutex busyMtx_;
+    std::condition_variable isBusy_;
     std::thread scheduler_;
 };
 
@@ -280,7 +304,7 @@ private:
 
 //-------------------------------------------------------------------
 /// @brief convenience alias
-using parallel_function_queue = parallel_task_queue<std::function<void()>>;
+using parallel_queue = parallel_task_queue<std::function<void()>>;
 
 
 } // namespace am
