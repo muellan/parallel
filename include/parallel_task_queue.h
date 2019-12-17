@@ -55,7 +55,7 @@ private:
         void operator () () {
             task_();
             --queue_->running_;
-            queue_->notify_task_complete();
+            (*queue_).notify_task_complete();
         }
 
     private:
