@@ -54,6 +54,8 @@ private:
 
         void operator () () {
             task_();
+
+            std::unique_lock<std::mutex> lock{queue_->busyMtx_};
             --queue_->running_;
             (*queue_).notify_task_complete();
         }
@@ -299,7 +301,9 @@ private:
          while(active_.load()) {
              if(busy()) {
                  std::unique_lock<std::mutex> lock{busyMtx_};
-                 isBusy_.wait(lock, [this]{ return !busy(); });
+                 if(busy()){
+                     isBusy_.wait(lock, [this]{ return !busy(); });
+                 }
              }
              else if(!empty()) {
                  try_assign_tasks();
