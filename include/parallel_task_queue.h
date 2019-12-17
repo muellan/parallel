@@ -54,8 +54,10 @@ private:
 
         void operator () () {
             task_();
+
+            std::unique_lock<std::mutex> lock{queue_->busyMtx_};
             --queue_->running_;
-            queue_->notify_task_complete();
+            (*queue_).notify_task_complete();
         }
 
     private:
@@ -76,10 +78,11 @@ public:
         active_{true}, hasWaiting_{false},
         running_{0},
         waiting_{},
-        workers_(concurrency),
+        workers_(std::min(concurrency, std::thread::hardware_concurrency())),
         isDone_{},
         busyMtx_{}, 
         isBusy_{},
+        isWaitingForTask_{},
         scheduler_{ [&] { schedule(); }}
     {}
 
@@ -93,7 +96,10 @@ public:
     {
         clear();
         //make sure that scheduler wakes up and terminates
+        std::unique_lock<std::recursive_mutex> lock{enqueueMtx_};
         active_.store(false);
+        isWaitingForTask_.notify_one();
+        lock.unlock();
         //wait for scheduler to terminate
         scheduler_.join();
     }
@@ -111,6 +117,7 @@ public:
         std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         waiting_.push_back(t);
         hasWaiting_.store(true);
+        isWaitingForTask_.notify_one();
     }
     //-----------------------------------------------------
     void
@@ -119,6 +126,7 @@ public:
         std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         waiting_.push_back(std::move(t));
         hasWaiting_.store(true);
+        isWaitingForTask_.notify_one();
     }
     //-----------------------------------------------------
     template<class InputIterator>
@@ -128,6 +136,7 @@ public:
         std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         waiting_.insert(begin(waiting_), first, last);
         hasWaiting_.store(true);
+        isWaitingForTask_.notify_one();
     }
     //-----------------------------------------------------
     void
@@ -136,6 +145,7 @@ public:
         std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         waiting_.insert(waiting_.end(), il);
         hasWaiting_.store(true);
+        isWaitingForTask_.notify_one();
     }
     //-----------------------------------------------------
     template<class... Args>
@@ -145,6 +155,7 @@ public:
         std::lock_guard<std::recursive_mutex> lock(enqueueMtx_);
         waiting_.emplace_back(std::forward<Args>(args)...);
         hasWaiting_.store(true);
+        isWaitingForTask_.notify_one();
     }
 
 
@@ -223,12 +234,40 @@ public:
 
     //---------------------------------------------------------------
     /**
-     * @brief block execution of calling thread until all tasks are complete
+     * @brief block execution of calling thread until all tasks are completed which are currently pending or running
      */
     void wait()
     {
+        /*
+            Submit a barrier to each worker thread. Calling thread blocks until each worker thread reached the barrier
+        */
+        std::unique_lock<std::recursive_mutex> enqueuelock{enqueueMtx_};
+
+        int barrierCount = concurrency();
+        
+        std::condition_variable cv;
+
+        auto barrierFunc = [&](){
+            std::unique_lock<std::mutex> lock{waitMtx_};
+            --barrierCount;
+
+            if(barrierCount == 0){
+                //std::cerr << "barrierCount = " << barrierCount << ", notifyall\n";
+                cv.notify_all();
+            }else{
+                //std::cerr << "barrierCount = " << barrierCount << ", block\n";
+                cv.wait(lock, [&](){return barrierCount == 0;});
+            }
+        };
+
+        for(unsigned int i = 0; i < concurrency(); i++){
+            enqueue(barrierFunc);
+        }
+
+        enqueuelock.unlock(); 
+
         std::unique_lock<std::mutex> lock{waitMtx_};
-        isDone_.wait(lock, [this] { return empty() && !running(); });
+        cv.wait(lock, [&](){return barrierCount == 0;});
     }
 
 
@@ -271,16 +310,16 @@ private:
          while(active_.load()) {
              if(busy()) {
                  std::unique_lock<std::mutex> lock{busyMtx_};
-                 isBusy_.wait(lock, [this]{ return !busy(); });
+                 if(busy()){
+                     isBusy_.wait(lock, [this]{ return !busy(); });
+                 }
              }
              else if(!empty()) {
                  try_assign_tasks();
              }            
-             else if(running() < 1) {
-                 std::lock_guard<std::recursive_mutex> lock{enqueueMtx_};
-                 if(empty() && (running() < 1)) {
-                     isDone_.notify_all();
-                 }
+             else{
+                 std::unique_lock<std::recursive_mutex> lock{enqueueMtx_};
+                 isWaitingForTask_.wait(lock, [this](){return !active_.load() || !empty();});
              }
          }
     }
@@ -297,6 +336,7 @@ private:
     std::condition_variable isDone_;
     std::mutex busyMtx_;
     std::condition_variable isBusy_;
+    std::condition_variable_any isWaitingForTask_;
     std::thread scheduler_;
 };
 
