@@ -76,7 +76,7 @@ public:
         active_{true}, hasWaiting_{false},
         running_{0},
         waiting_{},
-        workers_(concurrency),
+        workers_(std::min(concurrency, std::thread::hardware_concurrency())),
         isDone_{},
         busyMtx_{}, 
         isBusy_{},
@@ -223,12 +223,40 @@ public:
 
     //---------------------------------------------------------------
     /**
-     * @brief block execution of calling thread until all tasks are complete
+     * @brief block execution of calling thread until all tasks are completed which are currently pending or running
      */
     void wait()
     {
+        /*
+            Submit a barrier to each worker thread. Calling thread blocks until each worker thread reached the barrier
+        */
+        std::unique_lock<std::recursive_mutex> enqueuelock{enqueueMtx_};
+
+        int barrierCount = concurrency();
+        
+        std::condition_variable cv;
+
+        auto barrierFunc = [&](){
+            std::unique_lock<std::mutex> lock{waitMtx_};
+            --barrierCount;
+
+            if(barrierCount == 0){
+                //std::cerr << "barrierCount = " << barrierCount << ", notifyall\n";
+                cv.notify_all();
+            }else{
+                //std::cerr << "barrierCount = " << barrierCount << ", block\n";
+                cv.wait(lock, [&](){return barrierCount == 0;});
+            }
+        };
+
+        for(unsigned int i = 0; i < concurrency(); i++){
+            enqueue(barrierFunc);
+        }
+
+        enqueuelock.unlock(); 
+
         std::unique_lock<std::mutex> lock{waitMtx_};
-        isDone_.wait(lock, [this] { return empty() && !running(); });
+        cv.wait(lock, [&](){return barrierCount == 0;});
     }
 
 
