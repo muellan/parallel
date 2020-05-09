@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <iostream>
 #include <functional>
+#include <memory>
+#include <atomic>
 
 #include "task_thread.h"
 
@@ -243,31 +245,31 @@ public:
         */
         std::unique_lock<std::recursive_mutex> enqueuelock{enqueueMtx_};
 
-        int barrierCount = concurrency();
+        auto barrierCount = std::make_shared<std::atomic<int>>(int(concurrency()));
         
         std::condition_variable cv;
 
-        auto barrierFunc = [&](){
+        auto barrierFunc = [&, barrierCount](){
             std::unique_lock<std::mutex> lock{waitMtx_};
-            --barrierCount;
+            --(*barrierCount);
 
-            if(barrierCount == 0){
-                //std::cerr << "barrierCount = " << barrierCount << ", notifyall\n";
+            if((*barrierCount) == 0){
                 cv.notify_all();
             }else{
-                //std::cerr << "barrierCount = " << barrierCount << ", block\n";
-                cv.wait(lock, [&](){return barrierCount == 0;});
+                cv.wait(lock, [&](){return (*barrierCount) == 0;});
             }
         };
 
-        for(unsigned int i = 0; i < concurrency(); i++){
+        for(int i = 0; i < int(concurrency()); i++){
             enqueue(barrierFunc);
         }
 
         enqueuelock.unlock(); 
 
         std::unique_lock<std::mutex> lock{waitMtx_};
-        cv.wait(lock, [&](){return barrierCount == 0;});
+        if((*barrierCount) != 0){
+            cv.wait(lock, [&](){return (*barrierCount) == 0;});
+        }
     }
 
 
@@ -307,21 +309,21 @@ private:
     /// @brief this will run in a separate, dedicated thread
     void schedule()
     {
-         while(active_.load()) {
-             if(busy()) {
-                 std::unique_lock<std::mutex> lock{busyMtx_};
-                 if(busy()){
-                     isBusy_.wait(lock, [this]{ return !busy(); });
-                 }
-             }
-             else if(!empty()) {
-                 try_assign_tasks();
-             }            
-             else{
-                 std::unique_lock<std::recursive_mutex> lock{enqueueMtx_};
-                 isWaitingForTask_.wait(lock, [this](){return !active_.load() || !empty();});
-             }
-         }
+        while(active_.load()) {
+            if(busy()) {
+                std::unique_lock<std::mutex> lock{busyMtx_};
+                if(busy()){
+                    isBusy_.wait(lock, [this]{ return !busy(); });
+                }
+            }
+            else if(!empty()) {
+                try_assign_tasks();
+            }
+            else{
+                std::unique_lock<std::recursive_mutex> lock{enqueueMtx_};
+                isWaitingForTask_.wait(lock, [this](){return !active_.load() || !empty();});
+            }
+        }
     }
 
 
